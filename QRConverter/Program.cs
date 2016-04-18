@@ -2,12 +2,16 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Text;
+using NLog;
+
 
 namespace QRConverter
 {
     class Program
     {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
         private static QrCodeConverter _converter;
 
         public static void CreateAndSaveQrCode(string textPath, string qrWritePath, int resolution, string encoding = "utf-8")
@@ -20,18 +24,18 @@ namespace QRConverter
                 for (int i = 0; i < textsList.Count; i++)
                 {
                     var path = qrWritePath.Insert(qrWritePath.LastIndexOf('.'), "_" + i);
-                    var qrBitmap = _converter.Encode(textsList[i], resolution);
+                    var qrBitmap = _converter.Encode(textsList[i], resolution, encoding);
                     SaveImage(qrBitmap, path);
                 }
             }
             else
             {
-                var qrBitmap = _converter.Encode(text, resolution);
+                var qrBitmap = _converter.Encode(text, resolution, encoding);
                 SaveImage(qrBitmap, qrWritePath);
             }
         }
 
-        private static string ReadText(string textPath, string encoding = "utf-8")
+        private static string ReadText(string textPath, string encoding)
         {
             using (var stream = new FileStream(textPath, FileMode.Open, FileAccess.Read))
             using (var reader = new StreamReader(stream, Encoding.GetEncoding(encoding)))
@@ -42,16 +46,21 @@ namespace QRConverter
 
         private static void SaveImage(Bitmap imageBitmap, string imagePath)
         {
+            var extension = imagePath.Substring(imagePath.LastIndexOf('.') + 1).ToLower();
+            extension = extension != "jpg" ? extension.Replace(extension[0], char.ToUpper(extension[0])) : "Jpeg";
+            var format = (ImageFormat) typeof (ImageFormat).GetProperty(extension).GetValue(null);
+            
             try
             {
                 using (var stream = new FileStream(imagePath, FileMode.Create))
                 {
-                    imageBitmap.Save(stream, ImageFormat.Jpeg);
+                    imageBitmap.Save(stream, format);
                 }
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine("Access to file is unauthorized. Check folder security settings.");
+                logger.Info("Access to file is unauthorized. Check folder security settings.");
+                logger.Error(ex, "Unauthorized file access.");
                 throw ex;
             }
         }
@@ -64,7 +73,8 @@ namespace QRConverter
             }
             catch (UnauthorizedAccessException ex)
             {
-                Console.WriteLine("Access to file is unauthorized. Check folder security settings.");
+                logger.Info("Access to file is unauthorized. Check folder security settings.");
+                logger.Error(ex, "Unauthorized file access.");
                 throw ex;
             }
         }
@@ -72,39 +82,44 @@ namespace QRConverter
         static void Main(string[] args)
         {
             _converter = new QrCodeConverter();
-            Console.WriteLine("Mode ('read' to read text from QRCode, 'create' to create QRCode image from text):");
-            var mode = Console.ReadLine().ToLower();
-            while (mode != "create" & mode != "read")
+            var options = new CmdOptions();
+            if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                Console.WriteLine("Wrong input");
-                Console.WriteLine("Mode ('read' to read text from QRCode, 'create' to create QRCode image from text):");
-                mode = Console.ReadLine();
-            }
-
-            Console.WriteLine(@"Source (full path including name of the file 'c:\temp\source.txt'):");
-            var sourceFile = Console.ReadLine();
-            Console.WriteLine(@"Destination (full path including name of the file with extension 'c:\temp\destination.jpg'. If file exists it will be overwritten. Otherwise new file will be created): ");
-            var destFile = Console.ReadLine();
-
-            if (mode == "create")
-            {
-                Console.WriteLine(
-                    "Resolution in pixels (resolutions over 800px tend to be problematic with typical QR readers):");
-                int res;
-                while (!int.TryParse(Console.ReadLine(), out res))
+                options.Mode = options.Mode.ToLower();
+                if (options.Mode != "create" && options.Mode != "read")
                 {
-                    Console.WriteLine("Wrong input.");
-                    Console.WriteLine(
-                        "Resolution in pixels (resolutions over 800px tend to be problematic with typical QR readers):");
+                    logger.Info("Wrong mode input.");
+                    logger.Info(CmdOptions.HelpInfo);
                 }
-                CreateAndSaveQrCode(sourceFile, destFile, res);
+                else
+                {
+                    logger.Info("Working...");
+                    if (options.Mode == "create")
+                    {
+                        CreateAndSaveQrCode(options.Source, options.Output, options.Res, options.Encoding);
+                        logger.Info("Done!");
+                    }
+                    else
+                    {
+                        var formats = new [] {"jpeg", "jpg", "png", "emf", "exif", "gif", "tiff", "wmf", "bmp"};
+                        var extension = options.Source.Substring(options.Source.LastIndexOf('.') + 1).ToLower();
+                        if (!formats.Contains(extension))
+                        {
+                            logger.Info(
+                                "Image format is not supported. Supported formats: .jpeg, .bmp, .png, .emf, .exif, .gif, .tiff, .wmf");
+                        }
+                        else
+                        {
+                            var qrBitmap = new Bitmap(Image.FromFile(options.Source));
+                            var decodedText = _converter.Decode(qrBitmap);
+                            SaveText(decodedText, options.Output);
+                            logger.Info("Done!");
+                        }
+                    }
+                }
             }
             else
-            {
-                var qrBitmap = new Bitmap(Image.FromFile(sourceFile));
-                var decodedText = _converter.Decode(qrBitmap);
-                SaveText(decodedText, destFile);
-            }
+                logger.Info(CmdOptions.HelpInfo);
         }
     }
 }

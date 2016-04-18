@@ -9,7 +9,7 @@ namespace QRConverter
 {
     public class QrCodeConverter
     {
-        public Bitmap Encode(string textToConvert, int resolution, string charSet = "utf-8")
+        public Bitmap Encode(string textToConvert, int resolution, string encoding = "utf-8")
         {
             IBarcodeWriter writer = new BarcodeWriter
             {
@@ -17,7 +17,7 @@ namespace QRConverter
                 Options = new QrCodeEncodingOptions()
                 {
                     ErrorCorrection = ErrorCorrectionLevel.L,
-                    CharacterSet = charSet.ToLower(),
+                    CharacterSet = encoding.ToLower(),
                     Width = resolution,
                     Height = resolution,
                 }

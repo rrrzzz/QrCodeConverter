@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using NLog;
 
 namespace QRConverter
 {
     public static class StringExtensions
     {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
         public static List<string> Divide(this string text, int size, string encoding)
         {
             var stringsList = new List<string>();
@@ -28,7 +31,8 @@ namespace QRConverter
                 startIndex = i;
                 byteSum = charValue;
             }
-            throw new ArgumentException("Invalid string size specified.");
+            logger.Error("StringExtensions.Divide failed to properly handle long string.");
+            throw new ArgumentException("StringExtensions.Divide failed to properly handle long string.");
         }
 
         public static int CountBytes(this string str, string encoding)
@@ -39,7 +43,8 @@ namespace QRConverter
             }
             catch (ArgumentException ex)
             {
-                Console.WriteLine("Invalid encoding specified.");
+                logger.Error(ex, "Invalid encoding specified.");
+                logger.Info("Invalid encoding specified.");
                 throw ex;
             }
         }
