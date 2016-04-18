@@ -7,7 +7,7 @@ namespace QRConverter
 {
     public static class StringExtensions
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static Logger logger = InitLogger.GetLogger("StringExtensions");
 
         public static List<string> Divide(this string text, int size, string encoding)
         {
@@ -31,7 +31,7 @@ namespace QRConverter
                 startIndex = i;
                 byteSum = charValue;
             }
-            logger.Error("StringExtensions.Divide failed to properly handle long string.");
+            logger.Error("StringExtensions.Divide failed to properly handle long string");
             throw new ArgumentException("StringExtensions.Divide failed to properly handle long string.");
         }
 
@@ -43,7 +43,7 @@ namespace QRConverter
             }
             catch (ArgumentException ex)
             {
-                logger.Error(ex, "Invalid encoding specified.");
+                logger.Error(ex, "Invalid encoding specified");
                 logger.Info("Invalid encoding specified.");
                 throw ex;
             }

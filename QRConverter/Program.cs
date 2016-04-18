@@ -11,7 +11,7 @@ namespace QRConverter
 {
     class Program
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static Logger logger = InitLogger.GetLogger("Program");
         private static QrCodeConverter _converter;
 
         public static void CreateAndSaveQrCode(string textPath, string qrWritePath, int resolution, string encoding = "utf-8")
@@ -37,11 +37,21 @@ namespace QRConverter
 
         private static string ReadText(string textPath, string encoding)
         {
-            using (var stream = new FileStream(textPath, FileMode.Open, FileAccess.Read))
-            using (var reader = new StreamReader(stream, Encoding.GetEncoding(encoding)))
+            try
             {
-                return reader.ReadToEnd();
+                using (var stream = new FileStream(textPath, FileMode.Open, FileAccess.Read))
+                using (var reader = new StreamReader(stream, Encoding.GetEncoding(encoding)))
+                {
+                    return reader.ReadToEnd();
+                }
             }
+            catch (ArgumentException ex)
+            {
+                logger.Error(ex, "Invalid encoding specified");
+                logger.Info("Invalid encoding specified.");
+                throw ex;
+            }
+
         }
 
         private static void SaveImage(Bitmap imageBitmap, string imagePath)
@@ -60,7 +70,7 @@ namespace QRConverter
             catch (UnauthorizedAccessException ex)
             {
                 logger.Info("Access to file is unauthorized. Check folder security settings.");
-                logger.Error(ex, "Unauthorized file access.");
+                logger.Error(ex, "Unauthorized file access");
                 throw ex;
             }
         }
@@ -74,7 +84,7 @@ namespace QRConverter
             catch (UnauthorizedAccessException ex)
             {
                 logger.Info("Access to file is unauthorized. Check folder security settings.");
-                logger.Error(ex, "Unauthorized file access.");
+                logger.Error(ex, "Unauthorized file access");
                 throw ex;
             }
         }
