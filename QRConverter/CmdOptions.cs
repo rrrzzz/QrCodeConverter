@@ -7,7 +7,7 @@ namespace QRConverter
         [Option('e', "encoding", Required = false, HelpText = "Encoding of text used to generate QR code.", DefaultValue = "utf-8")]
         public string Encoding { get; set; }
 
-        [Option('r', "resolution", Required = false, HelpText = "Resolution of generated QR code in px. Resolutions over 800px tend to be problematic with typical QR readers", DefaultValue = 300)]
+        [Option('r', "resolution", Required = false, HelpText = "Resolution of generated QR code in px.", DefaultValue = 300)]
         public int Res { get; set; }
 
         [Option('o', "output", Required = true, HelpText = "Full output path including file name. If file exists it's overwritten. Otherwise new file is created.")]
@@ -29,7 +29,7 @@ namespace QRConverter
                 return "QRConverter is a cmdlet to encode text to QR code or decode text from QR code \n" +
                 "Use following Parameters:\n" +
                 "\t-e:\t[optional] Encoding of text used to generate QR code. Default: utf-8.\n" +
-                "\t-r:\t[optional] Resolution of generated QR code in px. Resolutions over 800px tend to be problematic with typical QR readers. Default: 300.\n" +
+                "\t-r:\t[optional] Resolution of generated QR code in px. Default: 300.\n" +
                 "\t-o:\tFull output path including file name. If file exists it's overwritten. Otherwise new file is created.\n" +
                 "\t-s:\tFull path to source image or text including file name.\n" +
                 "\t-m:\tMode ('read' to read text from QR code, 'create' to create QR code image from text).\n" +
