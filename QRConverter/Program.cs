@@ -54,6 +54,13 @@ namespace QRConverter
 
         }
 
+        private static bool ValidateFormat(string imgPath)
+        {
+            var formats = new[] { "jpeg", "jpg", "png", "emf", "exif", "gif", "tiff", "wmf", "bmp" };
+            var extension = imgPath.Substring(imgPath.LastIndexOf('.') + 1).ToLower();
+            return formats.Contains(extension);
+        }
+
         private static void SaveImage(Bitmap imageBitmap, string imagePath)
         {
             var extension = imagePath.Substring(imagePath.LastIndexOf('.') + 1).ToLower();
@@ -93,43 +100,42 @@ namespace QRConverter
         {
             _converter = new QrCodeConverter();
             var options = new CmdOptions();
-            if (CommandLine.Parser.Default.ParseArguments(args, options))
+            if (!CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                options.Mode = options.Mode.ToLower();
-                if (options.Mode != "create" && options.Mode != "read")
+                logger.Info(CmdOptions.HelpInfo);
+                return;
+            }
+
+            options.Mode = options.Mode.ToLower();
+            if (options.Mode != "create" && options.Mode != "read")
+            {
+                logger.Info("Wrong mode input.");
+                logger.Info(CmdOptions.HelpInfo);
+                return;
+            }
+
+            logger.Info("Working...");
+            if (options.Mode == "create")
+            {
+                if (ValidateFormat(options.Output))
                 {
-                    logger.Info("Wrong mode input.");
-                    logger.Info(CmdOptions.HelpInfo);
-                }
-                else
-                {
-                    logger.Info("Working...");
-                    if (options.Mode == "create")
-                    {
-                        CreateAndSaveQrCode(options.Source, options.Output, options.Res, options.Encoding);
-                        logger.Info("Done!");
-                    }
-                    else
-                    {
-                        var formats = new [] {"jpeg", "jpg", "png", "emf", "exif", "gif", "tiff", "wmf", "bmp"};
-                        var extension = options.Source.Substring(options.Source.LastIndexOf('.') + 1).ToLower();
-                        if (!formats.Contains(extension))
-                        {
-                            logger.Info(
-                                "Image format is not supported. Supported formats: .jpeg, .bmp, .png, .emf, .exif, .gif, .tiff, .wmf");
-                        }
-                        else
-                        {
-                            var qrBitmap = new Bitmap(Image.FromFile(options.Source));
-                            var decodedText = _converter.Decode(qrBitmap);
-                            SaveText(decodedText, options.Output);
-                            logger.Info("Done!");
-                        }
-                    }
+                    CreateAndSaveQrCode(options.Source, options.Output, options.Res, options.Encoding);
+                    logger.Info("Done!");
+                    return;
                 }
             }
             else
-                logger.Info(CmdOptions.HelpInfo);
+            {
+                if (ValidateFormat(options.Source))
+                {
+                    var qrBitmap = new Bitmap(Image.FromFile(options.Source));
+                    var decodedText = _converter.Decode(qrBitmap);
+                    SaveText(decodedText, options.Output);
+                    logger.Info("Done!");
+                    return;
+                }
+            }
+            logger.Info("Image format is not supported. Supported formats: .jpeg, .bmp, .png, .emf, .exif, .gif, .tiff, .wmf");
         }
     }
 }
