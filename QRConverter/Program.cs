@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Windows.Forms;
 using NLog;
 
 
@@ -11,10 +12,94 @@ namespace QRConverter
 {
     class Program
     {
+        static void Main(string[] args)
+        {
+            _converter = new QrCodeConverter();
+
+
+
+            _converter = new QrCodeConverter();
+            var options = new CmdOptions();
+            if (!CommandLine.Parser.Default.ParseArguments(args, options))
+            {
+                logger.Info(CmdOptions.HelpInfo);
+                return;
+            }
+
+            options.Mode = options.Mode.ToLower();
+            if (options.Mode != "create" && options.Mode != "read" && options.Mode != "webcam")
+            {
+                logger.Info("Wrong mode input.");
+                logger.Info(CmdOptions.HelpInfo);
+                return;
+            }
+
+            logger.Info("Working...");
+            if (options.Mode == "create")
+            {
+                if (ValidateFormat(options.Output))
+                {
+                    CreateAndSaveQrCode(options.Source, options.Output, options.Res, options.Encoding);
+                    logger.Info("Done!");
+                    return;
+                }
+                logger.Info("Image format is not supported. Supported formats: .jpeg, .bmp, .png, .emf, .exif, .gif, .tiff, .wmf");
+            }
+            else if (options.Mode == "read")
+            {
+                if (ValidateFormat(options.Source))
+                {
+                    var qrBitmap = new Bitmap(Image.FromFile(options.Source));
+                    var decodedText = _converter.Decode(qrBitmap);
+                    SaveText(decodedText, options.Output);
+                    logger.Info("Done!");
+                    return;
+                }
+                logger.Info("Image format is not supported. Supported formats: .jpeg, .bmp, .png, .emf, .exif, .gif, .tiff, .wmf");
+            }
+            else
+                ReadFromWebcam(options.Output);
+            Environment.Exit(0);
+        }
+
         private static Logger logger = InitLogger.GetLogger("Program");
         private static QrCodeConverter _converter;
 
-        public static void CreateAndSaveQrCode(string textPath, string qrWritePath, int resolution, string encoding = "utf-8")
+        private static void ReadFromWebcam(string output)
+        {
+            WebcamReader webcam;
+            try
+            {
+                webcam = new WebcamReader();
+            }
+            catch (SystemException ex)
+            {
+                logger.Info(ex.Message);
+                return;
+            }
+
+            webcam.VideoSource.Start();
+            while (!webcam.VideoSource.IsRunning){}
+            for (int i = 0; i < 5; i++)
+            {
+                System.Threading.Thread.Sleep(2000);
+                try
+                {
+                    var currentFrame = webcam.Frame;
+                    var result = _converter.Decode(currentFrame);
+                    logger.Info($"QR code text: {result}");
+                    SaveText(result, output);
+                    return;
+                }
+                catch (NullReferenceException)
+                {
+                    logger.Info($"Couldn't capture QR code. Making another attempt... {4-i} left");
+                }
+            }
+            logger.Info("Failed to capture QR code within 10 sec time limit.");
+        }
+
+        private static void CreateAndSaveQrCode(string textPath, string qrWritePath, int resolution, string encoding = "utf-8")
         {
             string text = ReadText(textPath, encoding);
             var textSize = text.CountBytes(encoding);
@@ -51,7 +136,6 @@ namespace QRConverter
                 logger.Info("Invalid encoding specified.");
                 throw ex;
             }
-
         }
 
         private static bool ValidateFormat(string imgPath)
@@ -92,50 +176,9 @@ namespace QRConverter
             {
                 logger.Info("Access to file is unauthorized. Check folder security settings.");
                 logger.Error(ex, "Unauthorized file access");
+                
                 throw ex;
             }
-        }
-
-        static void Main(string[] args)
-        {
-            _converter = new QrCodeConverter();
-            var options = new CmdOptions();
-            if (!CommandLine.Parser.Default.ParseArguments(args, options))
-            {
-                logger.Info(CmdOptions.HelpInfo);
-                return;
-            }
-
-            options.Mode = options.Mode.ToLower();
-            if (options.Mode != "create" && options.Mode != "read")
-            {
-                logger.Info("Wrong mode input.");
-                logger.Info(CmdOptions.HelpInfo);
-                return;
-            }
-
-            logger.Info("Working...");
-            if (options.Mode == "create")
-            {
-                if (ValidateFormat(options.Output))
-                {
-                    CreateAndSaveQrCode(options.Source, options.Output, options.Res, options.Encoding);
-                    logger.Info("Done!");
-                    return;
-                }
-            }
-            else
-            {
-                if (ValidateFormat(options.Source))
-                {
-                    var qrBitmap = new Bitmap(Image.FromFile(options.Source));
-                    var decodedText = _converter.Decode(qrBitmap);
-                    SaveText(decodedText, options.Output);
-                    logger.Info("Done!");
-                    return;
-                }
-            }
-            logger.Info("Image format is not supported. Supported formats: .jpeg, .bmp, .png, .emf, .exif, .gif, .tiff, .wmf");
         }
     }
 }
